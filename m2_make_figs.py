@@ -232,7 +232,7 @@ def Fig3_Model_Pi_Rate( data_set):
     axis.fill_between( set_sizes, 0, nannan, 
                         color=Blue, 
                         alpha=.25)
-    axis.legend( ['Effective capacity', 'Optimal cog. cost', 'Optimal policy comp.', 
+    axis.legend( ['Effective capacity', 'Optimal policy comp.', 'Optimal cog. cost', 
                  'Model cog. cost', 'Model rep. comp.', 'Model pol. comp.'] )
     axis.axis('off')
 
