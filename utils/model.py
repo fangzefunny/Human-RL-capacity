@@ -115,6 +115,7 @@ class RLModel:
         
         # a blank df
         out_data = pd.DataFrame( columns=[ 'setSize', 
+                                           'block',
                                            'state', 
                                            'action', 
                                            'reward', 
@@ -130,63 +131,16 @@ class RLModel:
 
         # each sample contains human respose within a block 
         for i in sample_list:
-            out_sample = self.simulate( data[i], params)
+            input_data = data[i].copy()
+            out_sample = self.simulate( input_data, params)
             out_data = pd.concat( [out_data, out_sample], axis=0, sort=True)
         return out_data
-
-    def debug_sim( self, data, params):
-        state_dim = len( data.state.unique())
-        action_dim = 3
-        agent= self.agent( state_dim, action_dim, params)
-        data['qvalue']         = float('nan')
-        data['prob']           = float('nan')
-        data['negLogLike']     = float('nan')
-        data['pi_complexity']  = float('nan')
-        data['rep_complexity'] = float('nan')
-        data['tradeoff']       = float('nan')
-
-        for i in range( data.shape[0]):
-
-            # obtain st, at
-            obs    = int( data.state[i])
-            action = int( data.action[i])
-            reward = int( data.reward[i])
-
-            # evaluate the likelihood
-            likelihood = agent.eval_action( obs, action)
-
-            # record the history 
-            data['prob'][i]           = likelihood
-            data['qvalue'][i]         = agent.q_value( obs, action)
-            data['negLogLike'][i]     = - np.log( likelihood + 1e-18)
-            try:
-                data['pi_complexity'][i]  = agent.pi_complexity()
-            except:
-                data['pi_complexity'][i]  = np.nan 
-            try:
-                data['rep_complexity'][i] = agent.rep_complexity()
-            except:
-                data['rep_complexity'][i] = np.nan 
-            try:
-                data['tradeoff'][i]       = agent.tau 
-            except:
-                data['tradeoff'][i]       = np.nan 
-
-            # store 
-            agent.memory.push( obs, action, reward)
-            
-            # model update
-            agent.update()    
-
-        return data
-
 
     def simulate( self, data, params):
     
         state_dim = len( data.state.unique())
         action_dim = 3
         agent= self.agent( state_dim, action_dim, params) 
-        data['predAct']        = float('nan')
         data['prob']           = float('nan')
         data['negLogLike']     = float('nan')
         data['pi_complexity']  = float('nan')
@@ -201,7 +155,7 @@ class RLModel:
             correct_act = int(data.correctAct[i])
             human_action = int(data.action[i])
             action = agent.get_action( state)
-            reward = (action  == correct_act)
+            reward = np.sum(action  == correct_act)
             
             # evaluate action: get p(ai|S = si)
             # for model with representations: p(ai|si) = \sum_x pi(ai|x)q(x|si)
@@ -209,7 +163,8 @@ class RLModel:
             likelihood      = agent.eval_action( state, human_action)
 
             # record some vals
-            data['predAct'][i]        = action
+            data['action'][i]         = action
+            data['reward'][i]         = reward
             data['prob'][i]           = pi_state_action
             data['negLogLike'][i]     = - np.log( likelihood + 1e-18)
             try:

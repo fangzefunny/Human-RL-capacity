@@ -22,41 +22,43 @@ def nats_to_bits( nats):
     '''
     return nats / np.log(2)
 
-def blahut_arimoto( distort, p_x, 
+def Blahut_Arimoto( distort, p_x, 
                     beta,
                     tol=1e-3, max_iter=50):
-    '''Blahut Arimoto algorithm
-    '''
-    # init variable for iteration
+    
+    # init for iteration
     nX, nY = distort.shape[0], distort.shape[1]
-    p_y1x = np.ones( [ nX, nY]) / nY 
-    p_y = ( p_x.T @ p_y1x).T 
-    done = False
-    i = 0
+    p_y1x  = np.ones([nX, nY]) / nY
+    p_y    = ( p_x.T @ p_y1x).T
+    done   = False 
+    i      = 0
 
     while not done:
 
-        # cache the current channel for convergence check
-        old_p_y1x = p_y1x 
-        
-        # p(y|x) ∝ p(y)exp(-βD(x,y)) nXxnY
-        log_p_y1x = - beta * distort + np.log( p_y.T)
-        p_y1x = np.exp( log_p_y1x - logsumexp( log_p_y1x, axis=-1, keepdims=True))
+        # cache  the old channel for convergence check
+        old_p_y1x = p_y1x
 
-        # p(y) = ∑_x p(x)p(y|x) nYx1
-        p_y = ( p_x.T @ p_y1x).T + np.finfo(float).eps
-        p_y = p_y / np.sum( p_y)
+        # update p(y|x) ∝ p(y)exp( -βD(x,y))
+        log_p_y1x = - beta * distort + np.log(p_y.T + np.finfo(float).eps) 
+        p_y1x     = np.exp( log_p_y1x - logsumexp( log_p_y1x, axis=-1, keepdims=True)) 
 
-        # iteration counter
+        # update p_y = ∑_x p(x)p(y|x)
+        p_y = (p_x.T @ p_y1x).T 
+    
+        # counter 
         i += 1
 
         # check convergence
-        if abs( p_y1x - old_p_y1x) < tol:
+        if np.sum(abs( p_y1x - old_p_y1x)) < tol:
             done = True 
+        
         if i >= max_iter:
-            print( f'reach maximum iteration {max_iter}, results might not inaccurate')
-            done = True 
-    
+            # print( f'''
+            #         The BA algorithm reaches maximum iteration {max_iter},
+            #         the outcome might be inaccurate
+            #         ''')
+            done = True
+
     return p_y1x, p_y 
 
 def MI_from_data( xs, ys, prior=None):
@@ -277,28 +279,35 @@ def Set_Size_effect( data, mode = 'human'):
             
     return outcome
 
-def model_Pi_Rate( data, min_it=1):
+def Model_Pi_Rate( data, min_it=1):
 
-    headers = [ 'setSize', 'state', 'action', 'reward', 
-                'iter', 'correctAct', 'prob', 'accuracy', 
-                'negLogLike', 'pi_complexity', 
-                'rep_complexity', 'tradeoff']
-    out_data = pd.DataFrame( columns=headers)
-    
-    for block in data.keys():
-        out_data = pd.concat( [ out_data, data[ block]], axis=0, sort=True)
     set_sizes = [ 2, 3, 4, 5, 6]  # get the setsize list
     trial_lst = range( min_it, 10)                   # manual the iteration list 
     outcome = np.zeros([ len(set_sizes), len(trial_lst)])  
     for i, sz in enumerate(set_sizes):  
         for j, trial in enumerate(trial_lst):
-            sub2_data = out_data[ (out_data.iter == trial) &
-                                  (out_data.setSize == sz)]  
+            sub2_data = data[ (data.iter == trial) &
+                              (data.setSize == sz)]  
             outcome[ i, j] = np.mean( sub2_data.pi_complexity)
     
     # take the mean over iteration
     Pi_Rate = np.mean( outcome, axis=1)
     return Pi_Rate
+
+def Model_Psi_Rate( data, min_it=1):
+
+    set_sizes = [ 2, 3, 4, 5, 6]  # get the setsize list
+    trial_lst = range( min_it, 10)                   # manual the iteration list 
+    outcome = np.zeros([ len(set_sizes), len(trial_lst)])  
+    for i, sz in enumerate(set_sizes):  
+        for j, trial in enumerate(trial_lst):
+            sub2_data = data[ (data.iter == trial) &
+                              (data.setSize == sz)]  
+            outcome[ i, j] = np.mean( sub2_data.rep_complexity)
+    
+    # take the mean over iteration
+    Psi_Rate = np.mean( outcome, axis=1)
+    return Psi_Rate
 
 
 def extract_pi_complexity_setsize( data, mode='model', iter_bar=1, prior=.1):
@@ -356,7 +365,7 @@ def extract_pi_complexity_setsize( data, mode='model', iter_bar=1, prior=.1):
     
     return out_lst 
 
-def empirical_Pi_Rate( data, prior):
+def Empirical_Pi_Rate( data, prior):
     '''Analyze the data
 
     Analyze the data to get the rate distortion curve,
@@ -370,29 +379,151 @@ def empirical_Pi_Rate( data, prior):
         in each block
     '''
      
-    # get the number of subjects
-    num_block = len(data.keys())
-    setSize = np.array([ 2, 3, 4, 5, 6])
-    
+    # get all different block
+    sub_card   = np.unique( data.subject)
+    block_card = np.unique(data.block)
+    num_sub    = len( sub_card)
+    num_block  = len( block_card)
+    setSize    = np.array([ 2, 3, 4, 5, 6])
+
     # create a placeholder
-    summary_Rate_data = np.empty( [ num_block, len(setSize)]) + np.nan
+    summary_Rate_data = np.empty( [ num_sub, num_block, len(setSize)]) + np.nan
 
     # run Blahut-Arimoto
-    for bi, block in enumerate(data.keys()):
+    for subi, sub in enumerate( sub_card):
+        for bi, block in enumerate(block_card):
+
+            # select the data in the block 
+            idx      = ((data.subject == sub) 
+                        & (data.iter < 10) 
+                        & (data.block==block))
+            states   = data.state[idx].values
+            actions  = data.action[idx].values
+            setsize  = int(data.setSize[idx].values[0]) - 2
+                
+            # estimate the mutual information from the data
+            Rate_data = MI_from_data( states, actions, prior)
+            
+            summary_Rate_data[ subi, bi, setsize] = Rate_data
+
+    Emp_Pi_Rate = np.nanmean( np.nanmean( summary_Rate_data, axis=0),axis=0)
+           
+    return Emp_Pi_Rate
+
+def Empirical_Rate_Reward( data, prior):
+    '''Analyze the data
+
+    Analyze the data to get the rate distortion curve,
+
+    Input:
+        data
+
+    Output:
+        Theoretical rate and distortion
+        Empirical rate and distortion 
+    '''
+ 
+    # prepare an array of tradeoff
+    betas = np.logspace( np.log10(.1), np.log10(10), 50)
+
+    # create placeholder
+    # the challenge of creating the placeholder
+    # is that the length of the variable change 
+    # in each iteration. To handle this method, 
+    # my strategy is to create a matrix with 
+    # the maxlength of each variable and then, use 
+    # nanmean to summary the variables
+    
+    # get the number of subjects
+    num_sub = len(data.keys())
+    max_setsize = 5
+    
+    # create a placeholder
+    results = dict()
+    summary_Rate_data = np.empty( [ num_sub, max_setsize]) + np.nan
+    summary_Val_data  = np.empty( [ num_sub, max_setsize]) + np.nan
+    summary_Rate_theo = np.empty( [ num_sub, len(betas), max_setsize,]) + np.nan
+    summary_Val_theo  = np.empty( [ num_sub, len(betas), max_setsize,]) + np.nan
+
+    # run Blahut-Arimoto
+    for subi, sub in enumerate(data.keys()):
 
         #print(f'Subject:{subi}')
-        block_data  = data[ block]
-       
-        idx      = ((block_data.iter < 10))
-        states   = block_data.state[idx].values
-        actions  = block_data.action[idx].values
-        setsize  = int(block_data.setSize.values[0]) - 2
+        sub_data  = data[ sub]
+        blocks    = np.unique( sub_data.block) # all blocks for a subject
+        setsize   = np.zeros( [len(blocks),])
+        Rate_data = np.zeros( [len(blocks),])
+        Val_data  = np.zeros( [len(blocks),])
+        Rate_theo = np.zeros( [len(blocks), len(betas)])
+        Val_theo  = np.zeros( [len(blocks), len(betas)])
+        #errors    = np.zeros( [len(blocks),])
+        #bias_state= np.zeros( [len(blocks), 6]) 
+
+        # estimate the mutual inforamtion for each block 
+        for bi, block in enumerate(blocks):
+            idx      = ((sub_data.block == block) & 
+                        (sub_data.iter < 10))
+            states   = sub_data.state[idx].values
+            actions  = sub_data.action[idx].values
+            cor_acts = sub_data.correctAct[idx].values
+            rewards  = sub_data.reward[idx].values
             
-        # estimate the mutual information from the data
-        Rate_data = MI_from_data( states, actions, prior)
-        
-        summary_Rate_data[ bi, setsize] = Rate_data
-           
-    return summary_Rate_data
+            # estimate some critieria 
+            #errors[bi]    = np.sum( actions != cor_acts) / len( actions)
+            Rate_data[bi] = MI_from_data( states, actions, prior)
 
+            Val_data[bi] = np.mean( rewards)
 
+            # estimate the theoretical RD curve
+            S_card  = np.unique( states)
+            A_card  = range(3)
+            nS      = len(S_card)
+            nA      = len(A_card)
+            
+            # calculate distortion fn (utility matrix) 
+            Q_value = np.zeros( [ nS, nA])
+            for i, s in enumerate( S_card):
+                a = int(cor_acts[states==s][0]) # get the correct response
+                Q_value[ i, a] = 1
+
+            # init p(s) 
+            p_s     = np.zeros( [ nS, 1])
+            for i, s in enumerate( S_card):
+                p_s[i, 0] = np.mean( states==s)
+            p_s += np.finfo(float).eps
+            p_s = p_s / np.sum( p_s)
+            
+            # run the Blahut-Arimoto to get the theoretical solution
+            for betai, beta in enumerate(betas):
+                
+                # get the optimal channel for each tradeoff
+                pi_a1s, p_a = Blahut_Arimoto( -Q_value, p_s,
+                                              beta)
+                # calculate the expected distort (-utility)
+                # EU = ∑_s,a p(s)π(a|s)Q(s,a)
+                theo_util  = np.sum( p_s * pi_a1s * Q_value)
+                # Rate = β*EU - ∑_s p(s) Z(s) 
+                # Z(s) = log ∑_a p(a)exp(βQ(s,a))  # nSx1
+                Zstate     = logsumexp( beta * Q_value + np.log(p_a.T), 
+                                    axis=-1, keepdims=True)
+                theo_rate  = beta * theo_util - np.sum( p_s * Zstate)
+
+                # record
+                Rate_theo[ bi, betai] = theo_rate
+                Val_theo[ bi, betai]  = theo_util
+
+            setsize[bi] = len(np.unique( states))
+
+        for zi, sz in enumerate([ 2, 3, 4, 5, 6]):
+            summary_Rate_data[ subi, zi] = np.nanmean( Rate_data[ (setsize==sz),])
+            summary_Val_data[ subi, zi]  = np.nanmean(  Val_data[ (setsize==sz),])
+            summary_Rate_theo[ subi, :, zi] = np.nanmean( Rate_theo[ (setsize==sz), :],axis=0)
+            summary_Val_theo[ subi, :, zi]  = np.nanmean(  Val_theo[ (setsize==sz), :],axis=0)
+
+    # prepare for the output 
+    results[ 'Rate_theo'] = np.nanmean( summary_Rate_theo, axis=0)
+    results[  'Val_theo'] = np.nanmean(  summary_Val_theo, axis=0)
+    results[ 'Rate_data'] = summary_Rate_data
+    results[  'Val_data'] = summary_Val_data
+
+    return results

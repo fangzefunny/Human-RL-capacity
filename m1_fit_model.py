@@ -18,7 +18,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 parser = argparse.ArgumentParser(description='Test for argparse')
 parser.add_argument('--data_set', '-d', help='which data set', default='collins_12')
 parser.add_argument('--fit_num', '-f', help='fit times', type = int, default=4)
-parser.add_argument('--agent_name', '-n', help='choose agent', default='fix_C')
+parser.add_argument('--agent_name', '-n', help='choose agent', default='Pi_Rep_model')
 parser.add_argument('--n_cores', '-c', help='number of CPU cores used for parallel computing', 
                                             type=int, default=0)
 parser.add_argument('--seed', '-s', help='random seed', type=int, default=120)
@@ -81,6 +81,7 @@ def fit_human_data( data, args):
     else:
         param_opt, loss_opt = model.fit( data, 
                     bnds = args.bnds,
+                    seed = 2021,
                     init = args.init) 
     
     # save opt params 
