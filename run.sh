@@ -5,9 +5,11 @@ python m0_preprocess.py
 
 ## declare an array variable
 declare datasets=('collins_12')
-declare models=('RLbaseline')
+declare models=('Pi_Rep_Grad')
 
-for model in "${models[@]}"; do 
-    echo Data set=collins 14 Model=$model
-        python m1_fit_model.py -f=6 -c=6 -n=$model -d='collins_14'
-done
+for dataset in "${datasets[@]}"; do 
+    for model in "${models[@]}"; do 
+        echo Data set=$dataset 14 Model=$model
+            python m1_fit_model.py -f=6 -c=3 -n=$model -d=$dataset
+    done
+done 

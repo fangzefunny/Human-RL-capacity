@@ -424,7 +424,7 @@ class Pi_Rep_Grad(Grad_model):
     def pi_complexity(self):
         return mutual_info( self.p_x, self.pi, self.p_a)
 
-    def rep_complexity( self):
+    def psi_complexity( self):
         return mutual_info( self.p_s, self.psi, self.p_x)
 
     def update(self):
@@ -435,32 +435,38 @@ class Pi_Rep_Grad(Grad_model):
         # calculate v prediction: V(st) --> scalar
         # and policy likelihood:  π(at|st) --> scalar 
         pred_v_obs = self.value( obs)
-        pi_like    = self.eval_action( obs, action)
+        psi_x1st = self.psi[ [obs], :]
+        pi_a1st  = (psi_x1st @  self.pi).T # (1xns x nsxna).T = 1xna.T =nax1
 
-        # compute policy compliexy: C_π(s,a)= log( π(at|st)) - log( p(at)) --> scalar  
+        # compute policy compliexy: log( π(at|st)) - log( p(at)) --> scalar  
         pi_comp = np.log( self.pi[ obs, action] + eps_) \
                    - np.log( self.p_a[ action, 0] + eps_)
-
+        # compute policy compliexy: ∑_x ψ(x|st) * log( ψ(x|st)) - log( p(x)) --> scalar 
+        psi_comp = np.sum( self.psi[ obs, : ] * 
+                    (np.log( self.psi[ obs, : ] + eps_)
+                   - np.log( self.p_x.reshape([-1]) + eps_)))
+        
         # compute predictioin error: δ = βr(st,at) - C_π(st,at) - V(st) --> scalar
-        rpe = self.beta * reward - pi_comp - pred_v_obs 
+        rpe = self.beta * reward - pi_comp - psi_comp - pred_v_obs 
         
         # update critic: V(st) = V(st) + α_v * δ --> scalar
         self.v[ obs, 0] += self.lr_v * rpe
 
-        # update policy parameter: θ = θ + α_θ * β * I(s=st) * δ *[1- π(at|st)] --> [nS,] 
-        I_s = self.psi[ obs, :]
-        self.theta[ :, action] += self.lr_theta * rpe * \
-                                  self.beta * I_s * (1 - pi_like) 
+         # update policy parameter: θ = θ - α_θ * △θ
+        I_act = np.zeros_like(self.p_a)
+        I_act[ action, 0] = 1.
+        dL_dpi = (I_act - pi_a1st) * - rpe
+        theta_grad = np.zeros( [ self.obs_dim, self.action_dim])
+        for x in range( self.obs_dim):
+            theta_grad[ x, :] = psi_x1st[0, x] * self.beta * dL_dpi.reshape([-1])
+        self.theta -= self.lr_theta * theta_grad
 
         # update policy parameter: π(a|s) ∝ p(a)exp(θ(s,a)) --> nSxnA
         # note that to prevent numerical problem, I add an small value
         # to π(a|s). As a constant, it will be normalized.  
-        log_pi = self.beta * self.theta + np.log(self.p_a.T) + eps_
+        log_pi = self.beta * self.theta +  np.log(self.p_a.T) + eps_
         self.pi = np.exp( log_pi - logsumexp( log_pi, axis=-1, keepdims=True))
-    
+
         # update the mariginal policy: p(a) = p(a) + α_a * [ π(a|st) - p(a)] --> nAx1
-        self.p_a += self.lr_a * ( self.pi[ [obs], :].T - self.p_a)
+        self.p_a += self.lr_a * ( pi_a1st - self.p_a)
         self.p_a = self.p_a / np.sum( self.p_a)
-
-
-
