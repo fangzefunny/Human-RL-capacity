@@ -442,12 +442,10 @@ class Pi_Rep_Grad(Grad_model):
         pi_comp = np.log( self.pi[ obs, action] + eps_) \
                    - np.log( self.p_a[ action, 0] + eps_)
         # compute policy compliexy: ∑_x ψ(x|st) * log( ψ(x|st)) - log( p(x)) --> scalar 
-        psi_comp = np.sum( self.psi[ obs, : ] * 
-                    (np.log( self.psi[ obs, : ] + eps_)
-                   - np.log( self.p_x.reshape([-1]) + eps_)))
+
         
         # compute predictioin error: δ = βr(st,at) - C_π(st,at) - V(st) --> scalar
-        rpe = self.beta * reward - pi_comp - psi_comp - pred_v_obs 
+        rpe = self.beta * reward - pi_comp - pred_v_obs 
         
         # update critic: V(st) = V(st) + α_v * δ --> scalar
         self.v[ obs, 0] += self.lr_v * rpe
