@@ -4,8 +4,8 @@
 python m0_preprocess.py
 
 ## declare an array variable
-declare datasets=('collins_12')
-declare models=('Pi_Rep_Grad')
+declare datasets=('collins_12' 'collins_12')
+declare models=('RLbaseline'  'Pi_model_1'  'Psi_Pi_model_3'  'Pi_Rep_Grad')
 
 for dataset in "${datasets[@]}"; do 
     for model in "${models[@]}"; do 

@@ -9,6 +9,8 @@ from utils.model import RLModel
 from utils.analyze import Empirical_Pi_Rate, Model_Pi_Rate, Model_Psi_Rate, Set_Size_effect, Empirical_Rate_Reward
 from utils.agents import *
 
+dpi = 200
+
 # find the current path
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -73,10 +75,13 @@ def Fig1_Set_Size( data_set):
         - Pi model
         - Pi+Rep model 
     '''
-    models   = [ 'human', 'RLbaseline', 'Pi_model_1',
-                 'Pi_model_2', 'Pi_Rep_Grad', 'Psi_Pi_model_3', 'optimal']
+    nr = 2
+    nc = 3
+    models   = [ 'human', 'RLbaseline', 'Pi_model_2', 'Psi_Pi_model_3', 'optimal']
     colors   = [ Blue, Red, Green, Yellow, Purple]
     set_sizes = [ 2, 3, 4, 5, 6]
+    lw = 1.5
+    mz = 6.25
 
     # get data
     data_lst = []
@@ -102,40 +107,41 @@ def Fig1_Set_Size( data_set):
         print( f'{models[n]}: {sse}')
 
     # create figure
-    plt.rcParams.update({'font.size': 15})
-    fig, ax = plt.subplots( 4, 2, figsize=( 8, 16))
-    plt.subplots_adjust( right=.9, bottom=.18)
+    plt.rcParams.update({'font.size': 12})
+    fig, ax = plt.subplots( nr, nc, figsize=( 2.6*nc, 2.5*nr))
+    plt.subplots_adjust( right=.9, bottom=.1)
 
     for n, model in enumerate( models):
-        axis = ax[ n // 2, n % 2]
+        axis = ax[ n // nc, n % nc]
         iters = np.arange( 1, 10)
         curves = data_lst[n]
         for i, _ in enumerate( set_sizes):
             axis.plot( iters, curves[ i, :], 'o-',
-                        linewidth=1.5, markersize=5.5, color=colors[i])
+                        linewidth=lw, markersize=mz, color=colors[i])
         axis.set_ylim( [ 0, 1.1])
         axis.set_xticks( range(1,10))
-        if n % 2 ==1:
+        if n % nc >0:
             axis.set_yticks([])
-        if n<5:
+        if n< (nr-1)*nc:
             axis.set_xticks([])
-        if model == 'human':
-            axis.set_title( 'human data')
-        else:
-            axis.set_title( f'{model}')   
+        # if model == 'human':
+        #     axis.set_title( 'human data')
+        # else:
+        #     axis.set_title( f'{model}')   
     
-    axis = ax[ 3, 1]
+    axis = ax[ 1, -1]
     for i, _ in enumerate( set_sizes):
         axis.plot( iters, 9*[np.nan], 'o-',
-                    linewidth=1.5, markersize=5.5, color=colors[i])    
+                    linewidth=lw, markersize=mz, color=colors[i])    
         axis.axis('off')
         axis.legend( ['Set Size=2', 'Set Size=3', 'Set Size=4',
-                            'Set Size=5', 'Set Size=5']) 
+                            'Set Size=5', 'Set Size=5'], prop={'size': 12}) 
+
     try: 
-        plt.savefig(f'{path}/figures/Fig1_set_size-{data_set}.png', dpi=1000)
+        plt.savefig(f'{path}/figures/Fig1_set_size-{data_set}.png', dpi=dpi)
     except:
         os.mkdir( f'{path}/figures')
-        plt.savefig(f'{path}/figures/Fig1_set_size-{data_set}.png', dpi=1000)
+        plt.savefig(f'{path}/figures/Fig1_set_size-{data_set}.png', dpi=dpi)
 
 def Fig2_Emp_Pi_Rate( data_set):
 
@@ -196,10 +202,12 @@ def Fig3_Model_Cogcost_Rate( data_set):
     optimal_curve = Model_Pi_Rate( pd.read_csv( fname))    
 
     # create figure
-    plt.rcParams.update({'font.size': 15})
+    plt.rcParams.update({'font.size': 12})
     nr = 3
     nc = 2
     alpha = .425
+    markersize = 6.5
+    lw = 2
     fig, ax = plt.subplots( nr, nc, figsize=( 2.8*nc, 2.5*nr))
     plt.subplots_adjust( right=.9, bottom=.1)
 
@@ -209,11 +217,11 @@ def Fig3_Model_Cogcost_Rate( data_set):
     pi_curves = Model_Pi_Rate( pd.read_csv( fname))
 
     axis.plot( set_sizes, optimal_curve, '--',
-                linewidth=1.5, color=Purple)
+                linewidth=lw , color='k')
     axis.plot( set_sizes, pi_curves, 'o-',
-                linewidth=1.5, color=Blue)
+                linewidth=lw , markersize=markersize, color=Blue)
     axis.fill_between( set_sizes, 0, pi_curves, 
-                        color=Blue, 
+                        color=Blue, hatch='//',
                         alpha=alpha)
     axis.set_ylim( [ 0, 3.])
     axis.set_xticks([])
@@ -222,23 +230,23 @@ def Fig3_Model_Cogcost_Rate( data_set):
     axis = ax[ 0, 1]
     nannan = 5*[np.nan]
     axis.plot( set_sizes, nannan, '--',
-                linewidth=1.5, color='k')
+                linewidth=lw , color='b')
     axis.plot( set_sizes, nannan, '--',
-                linewidth=1.5, color=Purple)
+                linewidth=lw , color='k')
     axis.plot( set_sizes, nannan, '--',
-                linewidth=1.5, color='b')
-    axis.plot( set_sizes, nannan, 'o-',
-                linewidth=1.5, color=Red)
-    axis.plot( set_sizes, nannan, 'o-',
-                linewidth=1.5, color=Blue)
+                linewidth=lw , color=Purple)
+    axis.plot( set_sizes, nannan, 'o-', markersize=markersize, 
+                linewidth=lw , color=Red)
+    axis.plot( set_sizes, nannan, 'o-', markersize=markersize,
+                linewidth=lw , color=Blue)
     axis.fill_between( set_sizes, 0, nannan, 
-                        color=Red, 
+                        color=Red, hatch='//',
                         alpha=alpha)
     axis.fill_between( set_sizes, 0, nannan, 
                         color=Blue, 
                         alpha=alpha)
     axis.legend( ['Effective capacity', 'Optimal policy comp.', 'Optimal cog. cost', 
-                 'Model cog. cost', 'Model pol. comp.', 'Model rep. comp.', 'Model pol. comp.'],prop={'size':10} )
+                 'Model cog. cost', 'Model pol. comp.', 'Model rep. comp.', 'Model pol. comp.'],prop={'size':11} )
     axis.axis('off')
 
     # plot Psi Pi model 1
@@ -248,32 +256,32 @@ def Fig3_Model_Cogcost_Rate( data_set):
     psi_curves = Model_Psi_Rate( pd.read_csv( fname))
 
     axis.plot( set_sizes, optimal_curve, '--',
-                linewidth=1.5, color=Purple)
-    axis.plot( set_sizes, pi_curves, 'o-',
-                linewidth=1.5, color=Blue)
+                linewidth=lw , color=Purple)
+    axis.plot( set_sizes, pi_curves, 'o-', markersize=markersize,
+                linewidth=lw , color=Blue)
     axis.fill_between( set_sizes, 0, pi_curves, 
-                        color=Blue, 
+                        color=Blue, hatch='//',
                         alpha=alpha)
     axis.set_ylim( [ 0, 3.])
     axis.set_xticks([])
     
     axis = ax[ 1, 1]
     axis.plot( set_sizes, psi_curves+optimal_curve, '--',
-                linewidth=1.5, color='b')
+                linewidth=lw , color='k')
     axis.plot( set_sizes, pi_curves, 'o-',
-                linewidth=1.5, markersize=5.5, color=Blue)
+                linewidth=lw , markersize=markersize, color=Blue)
     axis.fill_between( set_sizes, 0, pi_curves, 
-                        color=Blue, 
+                        color=Blue, hatch='//',
                         alpha=alpha)
     # Representation complexity
     axis.plot( set_sizes, psi_curves+pi_curves, 'o-',
-                linewidth=1.5, markersize=5.5, color=Red)
+                linewidth=lw , markersize=markersize, color=Red)
     axis.fill_between( set_sizes, pi_curves, pi_curves+psi_curves, 
-                        color=Red, 
+                        color=Red, hatch='//',
                         alpha=alpha)
     # capacity
     axis.plot( set_sizes, [np.max(pi_curves+psi_curves)]*5, '--',
-                linewidth=1.5, color='k')
+                linewidth=lw , color='b')
     axis.set_ylim( [ 0, 3.])
     axis.set_xticks([])
     axis.set_yticks([])
@@ -285,11 +293,11 @@ def Fig3_Model_Cogcost_Rate( data_set):
     pi_curves = Model_Pi_Rate( pd.read_csv( fname))
     psi_curves = Model_Psi_Rate( pd.read_csv( fname))
     axis.plot( set_sizes, optimal_curve, '--',
-                linewidth=1.5, color=Purple)
-    axis.plot( set_sizes, pi_curves, 'o-',
-                linewidth=1.5, color=Blue)
+                linewidth=lw, color=Purple)
+    axis.plot( set_sizes, pi_curves, 'o-', markersize=markersize,
+                linewidth=lw , color=Blue)
     axis.fill_between( set_sizes, 0, pi_curves, 
-                        color=Blue, 
+                        color=Blue, hatch='//',
                         alpha=alpha)
     axis.set_ylim( [ 0, 3.])
     axis.set_xticks( set_sizes)
@@ -298,21 +306,21 @@ def Fig3_Model_Cogcost_Rate( data_set):
     axis = ax[ 2, 1]
     # Policy complexity
     axis.plot( set_sizes, psi_curves+optimal_curve, '--',
-                linewidth=1.5, color='b')
+                linewidth=lw , color='k')
     axis.plot( set_sizes, pi_curves, 'o-',
-                linewidth=1.5, markersize=5.5, color=Blue)
+                linewidth=lw , markersize=markersize, color=Blue)
     axis.fill_between( set_sizes, 0, pi_curves, 
-                        color=Blue, 
+                        color=Blue, hatch='//',
                         alpha=alpha)
     # Representation complexity
     axis.plot( set_sizes, psi_curves+pi_curves, 'o-',
-                linewidth=1.5, markersize=5.5, color=Red)
+                linewidth=lw , markersize=markersize, color=Red)
     axis.fill_between( set_sizes, pi_curves, pi_curves+psi_curves, 
-                        color=Red, 
+                        color=Red, hatch='//',
                         alpha=alpha)
     # capacity
     axis.plot( set_sizes, [np.max(pi_curves+psi_curves)]*5, '--',
-                linewidth=1.5, color='k')
+                linewidth=lw , color='b')
     
     axis.set_ylim( [ 0, 3.])
     axis.set_yticks( [])
@@ -320,7 +328,7 @@ def Fig3_Model_Cogcost_Rate( data_set):
 
     print( f'Psi Pi 2: {np.max(pi_curves+psi_curves)}')
     
-    plt.savefig(f'{path}/figures/Fig3_Model_Pi_Rate-{data_set}.png', dpi=1000)
+    plt.savefig(f'{path}/figures/Fig3_Model_Pi_Rate-{data_set}.png', dpi=dpi)
 
 def Fig4_Rate_Reward_curve( data_set):
 
@@ -362,7 +370,7 @@ def Fig4_Rate_Reward_curve( data_set):
     axis.set_xlim([  0, 1.2])
     axis.set_ylim([ .2, 1.1])
 
-    plt.savefig(f'{path}/figures/Fig4_Rate_Reward-{data_set}.png', dpi=1000)
+    plt.savefig(f'{path}/figures/Fig4_Rate_Reward-{data_set}.png', dpi=dpi)
 
     print( np.mean(Rate_Rew[ 'Rate_data'][ :, 1]), np.mean(Rate_Rew[ 'Val_data'][ :, 1]))
     
@@ -395,27 +403,106 @@ def Fig5_Effective_MI( data_set):
     plt.xticks(set_sizes)
 
     plt.savefig(f'{path}/figures/Fig5_Effective_MI-{data_set}.png')
-    
 
+def Fig_slide( data_set):
+
+    # hyperparams
+    nr = 2
+    nc = 2
+    alpha = .425
+    set_sizes = [ 2, 3, 4, 5, 6]
+
+    # create figure
+    plt.rcParams.update({'font.size': 12})
+    fig, ax = plt.subplots( nr, nc, figsize=( 2.8*nc, 2.5*nr))
+    plt.subplots_adjust( right=.9, bottom=.1)
+
+    # get the optimal curve for comparison
+    opt_curves = Model_Pi_Rate( pd.read_csv( f'{path}/data/sim_{data_set}-optimal.csv'))
+    pi_curves = Model_Pi_Rate( pd.read_csv( f'{path}/data/sim_{data_set}-Pi_model_2.csv'))
+    psi_curves = Model_Psi_Rate( pd.read_csv( f'{path}/data/sim_{data_set}-Psi_Pi_model_3.csv'))
+    
+    # assume some value
+    hypo_cap  = np.array([1.1] * len(set_sizes)).reshape([-1,1])
+    hypo_cap2 = np.array([.85, .95, 1.05, 1.15, 1.25]).reshape([-1,1])
+    hypo_opt  = psi_curves.reshape([-1,1])
+    human_curve  = np.min(np.concatenate([hypo_cap,hypo_opt],axis=1),axis=1)
+    human_curve2 = np.min(np.concatenate([hypo_cap2,hypo_opt],axis=1),axis=1)
+
+    # fix capacity 
+    axis = ax[ 0, 0]
+    axis.plot( set_sizes, hypo_opt, '--',
+                linewidth=1.5, color='k')
+    axis.plot( set_sizes, hypo_cap, '--',
+                linewidth=1.5, color=Purple)
+    axis.plot( set_sizes, human_curve, 'o-',
+                linewidth=1.5, color=Blue)
+    axis.fill_between( set_sizes, 0, human_curve, 
+                        color=Blue, hatch='.',
+                        alpha=alpha)
+    axis.set_ylim( [ 0, 3.])
+    axis.set_xticks( set_sizes)
+
+    # legend 
+    axis = ax[ 0, 1]
+    nan_lst = [np.nan] * 5
+    axis.plot( set_sizes, nan_lst, '--',
+                linewidth=1.5, color='k')
+    axis.plot( set_sizes, nan_lst, '--',
+                linewidth=1.5, color=Purple)
+    axis.plot( set_sizes, nan_lst, 'o-',
+                linewidth=1.5, color=Blue)
+    # axis.fill_between( set_sizes, 0, nan_lst, 
+    #                     color=Blue, hatch='.',
+    #                     alpha=alpha)
+    axis.fill_between( set_sizes, 0, nan_lst, 
+                        color=Blue, hatch='//',
+                        alpha=alpha)
+    axis.set_axis_off()
+    #axis.legend( [ 'Opt. cost', 'Capacity', 'Hypo. agent cost', 'Hypo. agent cost', 'Pol. comp'], prop={'size': 12})
+    axis.legend( [ 'Opt. cost', 'Capacity', 'Pol. comp', 'Pol. comp'], prop={'size': 12})
+
+
+    # flexible capacity 
+    axis = ax[ 1, 0]
+    axis.plot( set_sizes, hypo_opt, '--',
+                linewidth=1.5, color='k')
+    axis.plot( set_sizes, hypo_cap2, '--',
+                linewidth=1.5, color=Purple)
+    axis.plot( set_sizes, human_curve2, 'o-',
+                linewidth=1.5, color=Blue)
+    axis.fill_between( set_sizes, 0, human_curve2, 
+                        color=Blue, hatch='.',
+                        alpha=alpha)
+    axis.set_ylim( [ 0, 3.])
+    axis.set_xticks( set_sizes)
+
+    # flexible capacity 
+    axis = ax[ 1, 1]
+    psi_curves = Model_Psi_Rate( pd.read_csv( f'{path}/data/sim_{data_set}-optimal.csv'))
+    axis.plot( set_sizes, opt_curves, '--',
+                linewidth=1.5, color='k')
+    axis.plot( set_sizes, pi_curves, 'o-',
+                linewidth=1.5, color=Blue)
+    axis.fill_between( set_sizes, 0, pi_curves, 
+                        color=Blue, hatch='//',
+                        alpha=alpha)
+    axis.set_ylim( [ 0, 3.])
+    axis.set_xticks( set_sizes)
+
+    plt.savefig(f'{path}/figures/Fig-slide-{data_set}.png', dpi=dpi)
 
 if __name__ == '__main__':
 
-    # params = [ 0., 0.02107682, 0.01277333, 6.57572485, 
-    #            6.20778639, 5.7483761, 5.33288481, 6.02997583]
-
-#     [1.45856979e-01 1.00000000e+00 0.00000000e+00 3.91992351e-02
-#  4.60110370e+01 3.40192460e+01 1.89895727e+01 1.14184622e+01
-#  9.02675319e+00]
 
     ## simulate data 
     data_set = 'collins_12'
-    #simulate_data( data_set, 'Psi_Pi_model_3')
     
     # make figures
-    #Fig1_Set_Size(data_set)
+    Fig1_Set_Size(data_set)
     Fig3_Model_Cogcost_Rate( data_set)
-
-    #Fig5_Effective_MI( data_set)
+    Fig5_Effective_MI( data_set)
+    Fig_slide( data_set)
 
     
 
