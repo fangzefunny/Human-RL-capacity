@@ -24,6 +24,6 @@ These scripts may return more details about the model. Note that the number foll
 
 Fill what you want in “<>”。
 
-## The corresponding paper
+## The corresponding documents
 
 Fang, Z., & Sims, C. (2021, July). Computationally rational reinforcement learning: modeling the influence of policy and representation complexity. Paper presented at Virtual MathPsych/ICCM 2021. Via mathpsych.org/presentation/608.
